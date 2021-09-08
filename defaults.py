@@ -1,6 +1,6 @@
 from yacs.config import CfgNode as CN
 import math
-
+import numpy as np
 """
 Values from "Advanced RAIM User Algorithm Description: Integrity Support Message Processing, 
 Fault Detection, Exclusion, and Protection Level Calculation"
@@ -10,8 +10,19 @@ https://web.stanford.edu/group/scpnt/gpslab/pubs/papers/Blanch_et_al_IONGNSS_201
 _C = CN()
 
 _C.sim = CN()
-_C.sim.n_sat = 24 #TODO: Support for multiple constellations
-_C.sim.n_const = 1
+_C.sim.n_sat = [5, 5]
+_C.sim.n_const = 2
+_C.sim.geo_matrix = np.array([[ 0.0225,  0.9951, -0.0966, 1, 0],
+                              [ 0.6750, -0.6900, -0.2612, 1, 0],
+                              [ 0.0723, -0.6601, -0.7477, 1, 0],
+                              [-0.9398,  0.2553, -0.2269, 1, 0],
+                              [-0.5907, -0.7539, -0.2877, 1, 0],
+                              [-0.3236, -0.0354, -0.9455, 0, 1],
+                              [-0.6748,  0.4356, -0.5957, 0, 1],
+                              [ 0.0938, -0.7004, -0.7075, 0, 1],
+                              [ 0.5571,  0.3088, -0.7709, 0, 1],
+                              [ 0.6622,  0.6958, -0.2780, 0, 1],])
+_C.sim.
 
 _C.integrity = CN() # Integrity budgets
 _C.total_budget = 1e-7 # total integrity budget
@@ -21,7 +32,7 @@ _C.horizontal_budget = 2e-9 # integrity budget for the horizontal component
 _C.fault_prob = CN() # Failure probabilities
 _C.fault_prob.sat = 4e-8 # Individual satellite failure probability
 _C.fault_prob.constellation = {"GPS": 4e-8, # Constellation-wide failure probability
-                        "Galileo": 4e-8}
+                               "Galileo": 4e-8}
 
 _C.continuity = CN()
 _C.continuity.false_alert = 4e-6 # Continuity budget allocated to disruptions due to false alert. 
@@ -37,60 +48,8 @@ _C.periods = CN()
 _C.periods.consistency_check_period = 300 # Time constant between consistency checks for excluded satellites
 _C.periods.recovery_period = 600 # Minimum time period a previously excluded satellite remains out of the all-in-view position solution
 
-# Table source:
-# https://web.stanford.edu/group/scpnt/gpslab/pubs/papers/Blanch_et_al_IONGNSS_2012_B5_nr7_post_submission_rev3.pdf
-_errors_elevations = {5.0: 0.4529,
-                         10.0: 0.3553,
-                         15.0: 0.3063,
-                         20.0: 0.2638,
-                         25.0: 0.2593,
-                         30.0: 0.2555,
-                         35.0: 0.2504,
-                         40.0: 0.2438,
-                         45.0: 0.2396,
-                         50.0: 0.2359,
-                         55.0: 0.2339,
-                         60.0: 0.2302,
-                         65.0: 0.2295,
-                         70.0: 0.2278,
-                         75.0: 0.2297,
-                         80.0: 0.2310,
-                         85.0: 0.2274,
-                         90.0: 0.2277,}
 
-def get_user_error(elevation:float) -> float:
-    """
-    Gets galileo user terminal error standard deviation given the elevation angle of a GNSS signal.
-    TODO: Implement GPS user terminal error
-    Args:
-        elevation (float): Elevation of the satellite sending the pseudorange signal for which the troposheric error must be obtained
 
-    Returns:
-        float: User terminal error
-    """  
-    assert 0.0 < elevation < 90.0
-    if elevation in _errors_elevations:
-        return _errors_elevations[elevation]
-    else:
-        key_min = elevation - elevation%5.0
-        key_max = key_min + 5.0
-        user_min = _errors_elevations[key_min]
-        user_max = _errors_elevations[key_max]
-        user_error = user_min + elevation/(key_max-key_min)*(user_max - user_min)
-    return user_error
-        
-def get_tropo_error(elevation:float) -> float:
-    """
-    Gets tropospheric error standard deviation given the elevation angle of a GNSS signal. Formula source:
-    https://web.stanford.edu/group/scpnt/gpslab/pubs/papers/Blanch_et_al_IONGNSS_2012_B5_nr7_post_submission_rev3.pdf
-    Args:
-        elevation (float): Elevation of the satellite sending the pseudorange signal for which the troposheric error must be obtained
-
-    Returns:
-        float: Troposheric error
-    """    
-    assert 0.0 < elevation < 90.0
-    return 0.12*1.0017/(0.002001 + math.sin(math.pi*elevation/180)**2)
 
 def get_cfg_defaults() -> CN:
   """Get a yacs CfgNode object with default values for my_project."""

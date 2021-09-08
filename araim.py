@@ -1,19 +1,12 @@
-from defaults import get_cfg_defaults, get_user_error, get_tropo_error
+from sim import Simulation
+from defaults import get_cfg_defaults
 from yacs.config import CfgNode as CN
 import numpy as np
 from typing import List, Union
 
-def get_integrity_service_message(n_sat: int, n_const: int) -> CN():
-    integrity_message = CN()
-    integrity_message.integrity_clock_ephem_error = {f"sat_{i}": 1e-10 for i in n_sat}
-    integrity_message.acc_cont_clock_ephem_error = {f"sat_{i}": 1e-10 for i in n_sat}
-    integrity_message.max_bias = {f"sat_{i}": 0 for i in n_sat}
-    integrity_message.p_sat_fault = {f"sat_{i}": 1e-10 for i in n_sat}
-    integrity_message.p_const_fault = {f"sat_{i}": 1e-10 for i in n_const}
-    return integrity_message
 
 
-def build_covariance_matrices(ism:CN, tropo_error: Union(List[float], float), user_error: Union(float, List[float])) -> List[np.ndarray, np.ndarray]:
+def build_covariance_matrices(ism:CN, tropo_error: Union(float, np.ndarray), user_error: Union(float, np.ndarray)) -> List[np.ndarray, np.ndarray]:
     
     n_sat = len(ism.integrity_clock_ephem_error)
     pseudorange_cov_integrity = np.zeros((n_sat,n_sat))
@@ -29,23 +22,24 @@ def build_covariance_matrices(ism:CN, tropo_error: Union(List[float], float), us
 
 
 
+
 def main():
     """
     Simulates an araim algorithm. Working prototype
     """
 
     conf = get_cfg_defaults()
-    n_sat = conf.sim.n_sat
-    n_const = conf.sim.n_const
-    active_sats = [f"sat_{i}" for i in range(n_sat)]
+    sim = Simulation(conf.sim)
+    n_sat = sim.n_sats
+    n_const = sim.n_const
+    active_sats = np.ones(shape=(sim.n_const, sim.n_sat))
     # Start calculation loop
     while True:
         # The ism provides information related to instantaneous signal integrity
-        ism = get_integrity_service_message(n_sat, n_const)
+        ism = sim.get_integrity_service_message(n_sat, n_const)
         # Pseudorange covariance matrices
-        user_error = get_user_error()
-        tropo_error = get_tropo_error()
-        pseudorange_cov_integrity, pseudorange_cov_acc_cont = build_covariance_matrices(ism, tropo_error, user_error)
+
+        pseudorange_cov_integrity, pseudorange_cov_acc_cont = build_covariance_matrices(ism, sim.get_tropo_error(), sim.get_user_error())
         # All in view position solution
         
         # Determination of faults that need to be monitored
